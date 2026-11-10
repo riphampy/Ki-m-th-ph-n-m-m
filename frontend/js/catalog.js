@@ -22,7 +22,7 @@ async function catalog() {
   }
   bindForm('filter-form',()=>load()); bindForm('search-form',()=>load());
   $('#sort').onchange=()=>action($('#sort'),()=>load());
-  $('[data-testid="filter-reset-button"]').onclick=event=>action(event.currentTarget,async()=>{$('#filter-form').reset();$('#filter-category_id').value='';$('#search').value='';$('#sort').value='newest';await load();});
+  $('[data-testid="filter-reset-button"]').onclick=event=>action(event.currentTarget,async()=>{$('#filter-form').reset();$('#filter-category-id').value='';$('#search').value='';$('#sort').value='newest';await load();});
   await load();
 }
 async function detail() {

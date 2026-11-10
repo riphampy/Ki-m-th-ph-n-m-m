@@ -43,7 +43,9 @@ def integer(data, key, low, high, default=None, query=False):
 
 def email(data):
     value = string(data, "email", 3, 100).casefold()
-    if not re.fullmatch(r"[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+", value):
+    local = r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+"
+    domain = r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
+    if not re.fullmatch(local + r"(?:\." + local + r")*@(?:" + domain + r"\.)+[a-z]{2,63}", value):
         fail("email", "Email không đúng định dạng")
     return value
 
@@ -51,7 +53,7 @@ def password(data, key="password"):
     value = data.get(key)
     if not isinstance(value, str) or not 8 <= len(value) <= 32:
         fail(key, "Mật khẩu phải có từ 8 đến 32 ký tự")
-    for pattern, label in [(r"[A-Z]", "chữ hoa"), (r"[a-z]", "chữ thường"), (r"[0-9]", "chữ số"), (r"[^\w\s]", "ký tự đặc biệt")]:
+    for pattern, label in [(r"[A-Z]", "chữ hoa"), (r"[a-z]", "chữ thường"), (r"[0-9]", "chữ số"), (r"(?:[^\w\s]|_)", "ký tự đặc biệt")]:
         if not re.search(pattern, value):
             fail(key, "Mật khẩu phải có ít nhất 1 " + label)
     return value

@@ -103,7 +103,7 @@ def build_spec(app):
                 properties["name"].update(minLength=3, maxLength=100, example="Intel Core i5-12400F")
             if rule.endpoint == "inventory.create_receipt":
                 properties["quantity"]["maximum"] = 1000
-            params.append({"name": "body", "in": "body", "required": True, "schema": {"type": "object", "additionalProperties": False, "properties": properties, "required": required.split(), "example": {k: v["example"] for k, v in properties.items()}}})
+            params.append({"name": "body", "in": "body", "required": True, "schema": {"type": "object", "additionalProperties": False, "properties": properties, **({"required": required.split()} if required else {}), "example": {k: v["example"] for k, v in properties.items()}}})
         status = "201" if rule.endpoint in CREATED else "200"
         responses = {status: {"description": "Thành công", "examples": {"application/json": {"success": True, "data": response_example(kind), "message": "Thành công"}}}}
         for code, message in [(400, "Dữ liệu đầu vào vi phạm quy tắc của trường"), (401, "Bạn chưa đăng nhập hoặc email/mật khẩu không đúng"), (403, "Không đủ quyền hoặc tài khoản đã bị khóa"), (404, "Không tìm thấy dữ liệu hoặc sản phẩm đã bị xóa"), (409, "Xung đột: email/tên/đánh giá trùng, thiếu tồn kho hoặc trạng thái đơn không cho phép")]:

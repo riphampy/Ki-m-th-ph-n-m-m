@@ -1,4 +1,5 @@
 import json
+import logging
 import tempfile
 import threading
 import time
@@ -87,7 +88,7 @@ class BackendTests(unittest.TestCase):
 
     def test_validation_boundaries(self):
         good = {"name": "An", "email": "valid@test.com", "password": "Abcdef1!", "phone": "0312345678", "address": "1234567890"}
-        for key, value in [("name", " "), ("name", "a"*51), ("email", "bad"), ("email", "a"*95+"@a.com"), ("password", "Abcd1!a"), ("password", "aB1!"+"a"*29), ("password", "abcdef1!"), ("password", "ABCDEF1!"), ("password", "Abcdefg!"), ("password", "Abcdef12"), ("phone", "0612345678"), ("phone", "03123456789"), ("address", "123456789"), ("address", "a"*201)]:
+        for key, value in [("name", " "), ("name", "a"*51), ("email", "bad"), ("email", "a..b@test.com"), ("email", "a@-test.com"), ("email", "a"*95+"@a.com"), ("password", "Abcd1!a"), ("password", "aB1!"+"a"*29), ("password", "abcdef1!"), ("password", "ABCDEF1!"), ("password", "Abcdefg!"), ("password", "Abcdef12"), ("phone", "0612345678"), ("phone", "03123456789"), ("address", "123456789"), ("address", "a"*201)]:
             with self.subTest(key=key, value=value):
                 result = self.call(self.public, "POST", "/api/auth/register", {**good, key: value}, 400)
                 self.assertIn(key, result["errors"])
@@ -199,14 +200,41 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(operations, expected)
         self.assertEqual(operations, 36)
         self.assertEqual(self.public.get("/apidocs/").status_code, 200)
-        self.assertEqual(self.public.get("/").status_code, 200)
+        with self.public.get("/") as response:
+            self.assertEqual(response.status_code, 200)
         print(f"Reset: {elapsed:.3f}s; Swagger: {operations} operations")
+
+    def test_remaining_endpoints_and_review_receipt_boundaries(self):
+        self.assertIn("Intel", self.call(self.public, "GET", "/api/brands"))
+        self.assertEqual(self.call(self.admin, "GET", "/api/admin/users")["total"], 4)
+        self.assertEqual(self.call(self.public, "GET", "/api/products/4/reviews")["total"], 3)
+        created = self.call(self.admin, "POST", "/api/admin/products", {"name": "CPU Test", "brand": "Test", "category_id": 1, "price": 1000, "stock": 10}, 201)
+        self.assertEqual(created["stock"], 10)
+        order = self.checkout(product_id=created["id"], quantity=1)
+        self.call(self.customer, "PUT", f"/api/orders/{order['id']}/cancel")
+        self.assertEqual(self.product(created["id"])["stock"], 10)
+        self.call(self.customer, "POST", "/api/cart/items", {"product_id": 4, "quantity": 1}, 201)
+        self.call(self.customer, "DELETE", "/api/cart")
+        self.assertEqual(self.call(self.customer, "GET", "/api/cart")["total"], 0)
+        for rating in (0, 6, True, 1.5, "5"):
+            self.call(self.customer, "POST", "/api/products/5/reviews", {"rating": rating, "comment": "a"*10}, 400)
+        for comment in ("a"*9, "a"*501, " "*10):
+            self.call(self.customer, "POST", "/api/products/5/reviews", {"rating": 5, "comment": comment}, 400)
+        review = self.call(self.customer, "POST", "/api/products/5/reviews", {"rating": 1, "comment": "a"*10}, 201)
+        self.call(self.customer, "PUT", f"/api/reviews/{review['id']}", {"rating": 5, "comment": "a"*500})
+        for cost in (999, 500000001, True, "1000"):
+            self.call(self.admin, "POST", "/api/admin/receipts", {"product_id": 4, "quantity": 1, "unit_cost": cost}, 400)
+        self.call(self.admin, "POST", "/api/admin/receipts", {"product_id": 4, "quantity": 1, "unit_cost": 500000000}, 201)
+        self.call(self.public, "GET", "/api/products?unknown=1", expected=400)
+        self.call(self.public, "GET", "/api/products?page=1&page=2", expected=400)
+        self.call(self.public, "POST", "/api/auth/register", [], 400)
 
     def test_waitress_100_requests_and_concurrent_confirmation(self):
         order = self.checkout(quantity=1)
         self.call(self.admin, "PUT", "/api/admin/products/4", {"stock": 1})
         second = self.checkout(self.login("customer2@test.com"), quantity=1)
         cookie = self.admin.get_cookie("session").value
+        logging.getLogger("waitress.queue").setLevel(logging.ERROR)
         server = create_server(self.app, host="127.0.0.1", port=0, threads=16)
         runner = threading.Thread(target=server.run, daemon=True)
         runner.start()

@@ -22,13 +22,13 @@ def body(allowed):
         fail(sorted(extra)[0], "Trường không được hỗ trợ: " + sorted(extra)[0])
     return data
 
-def string(data, key, low, high, optional=False):
+def string(data, key, low, high, optional=False, strip=True):
     if optional and key not in data:
         return None
     value = data.get(key)
     if not isinstance(value, str):
         fail(key, f"{key} phải là chuỗi ký tự")
-    value = value.strip()
+    value = value.strip() if strip else value
     if not low <= len(value) <= high:
         fail(key, f"{key} phải dài từ {low} đến {high} ký tự")
     return value

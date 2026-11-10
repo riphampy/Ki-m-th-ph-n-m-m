@@ -6,15 +6,15 @@ from flask import Flask, request, jsonify, send_from_directory
 from sqlalchemy import event, text
 from sqlalchemy.exc import IntegrityError, OperationalError
 from werkzeug.exceptions import HTTPException
-from flasgger import Swagger
+from flask_swagger_ui import get_swaggerui_blueprint
 from .models import db, User
-from .core import ApiError
+from .core import ApiError, fail
 
 ROOT = Path(__file__).resolve().parent.parent
 
 def create_app(config=None):
     app = Flask(__name__, static_folder=None)
-    app.config.update(SECRET_KEY=os.environ.get("SECRET_KEY") or secrets.token_hex(32), APP_ENV=os.environ.get("APP_ENV", "test"), SQLALCHEMY_DATABASE_URI="sqlite:///" + (ROOT / "shop.db").as_posix(), SQLALCHEMY_TRACK_MODIFICATIONS=False, SQLALCHEMY_ENGINE_OPTIONS={"connect_args": {"timeout": 30}, "pool_size": 20, "max_overflow": 0}, SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", MAX_CONTENT_LENGTH=1024*1024, SWAGGER={"title": "PC Parts Shop API", "uiversion": 3, "specs_route": "/apidocs/"})
+    app.config.update(SECRET_KEY=os.environ.get("SECRET_KEY") or secrets.token_hex(32), APP_ENV=os.environ.get("APP_ENV", "test"), SQLALCHEMY_DATABASE_URI="sqlite:///" + (ROOT / "shop.db").as_posix(), SQLALCHEMY_TRACK_MODIFICATIONS=False, SQLALCHEMY_ENGINE_OPTIONS={"connect_args": {"timeout": 30}, "pool_size": 20, "max_overflow": 0}, SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", MAX_CONTENT_LENGTH=1024*1024)
     if config:
         app.config.update(config)
     app.json.ensure_ascii = False
@@ -40,6 +40,14 @@ def create_app(config=None):
 
     @app.before_request
     def begin_mutation():
+        from .api_docs import CONTRACT
+        contract = CONTRACT.get(request.endpoint)
+        if contract:
+            for key in request.args:
+                if key not in contract[4]:
+                    fail(key, "Tham số truy vấn không được hỗ trợ: " + key)
+                if len(request.args.getlist(key)) != 1:
+                    fail(key, "Tham số truy vấn không được lặp lại: " + key)
         if request.path.startswith("/api/") and request.method in ("POST", "PUT", "DELETE", "PATCH"):
             db.session.execute(text("BEGIN IMMEDIATE"))
 
@@ -89,5 +97,11 @@ def create_app(config=None):
         return send_from_directory(ROOT / "frontend", filename)
 
     from .api_docs import build_spec
-    Swagger(app, template=build_spec(app))
+    spec = build_spec(app)
+
+    @app.get("/apispec_1.json")
+    def api_spec():
+        return jsonify(spec)
+
+    app.register_blueprint(get_swaggerui_blueprint("/apidocs", "/apispec_1.json", config={"app_name": "PC Parts Shop", "validatorUrl": None}))
     return app

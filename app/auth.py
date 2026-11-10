@@ -20,7 +20,7 @@ def register():
 def login():
     data = body("email password")
     mail = email(data)
-    raw = string(data, "password", 1, 200)
+    raw = string(data, "password", 1, 200, strip=False)
     user = User.query.filter_by(email=mail).first()
     if user and user.is_locked:
         raise ApiError("Tài khoản đã bị khóa", 403)
@@ -62,7 +62,7 @@ def profile():
 @auth()
 def change_password():
     data = body("old_password new_password")
-    old = string(data, "old_password", 1, 200)
+    old = string(data, "old_password", 1, 200, strip=False)
     new = password(data, "new_password")
     if not check_password_hash(g.user.password_hash, old):
         fail("old_password", "Mật khẩu cũ không đúng")

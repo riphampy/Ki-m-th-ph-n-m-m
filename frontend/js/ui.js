@@ -103,10 +103,11 @@ export async function boot(render) {
   $('[data-testid="toast-close-button"]').onclick = () => { $('#toast').hidden = true; };
   const stored = sessionStorage.getItem('pc-shop-flash'); if (stored) { sessionStorage.removeItem('pc-shop-flash'); try { const data = JSON.parse(stored); toast(data.message, data.type); } catch {} }
   try {
-    try { user = (await api('/auth/me')).data; } catch (error) { if (![401,403].includes(error.status)) throw error; if (error.status === 403) toast(error.message, 'error'); }
+    let authError;
+    try { user = (await api('/auth/me')).data; } catch (error) { authError = error; if (![401,403].includes(error.status)) throw error; if (error.status === 403) toast(error.message, 'error'); }
     navigation();
     const role = document.body.dataset.role;
-    if (role !== 'public' && !user) { loginRedirect(); return; }
+    if (role !== 'public' && !user) { loginRedirect(authError?.message); return; }
     if (role !== 'public' && role !== 'LOGIN' && role !== user.role) { content.innerHTML = `<section class="panel no-access"><h1 data-testid="access-denied-message">Bạn không có quyền truy cập</h1><p>Trang này chỉ dành cho ${role === 'ADMIN' ? 'quản trị viên' : 'khách hàng'}.</p><a href="/index.html" class="button" data-testid="access-denied-home-link">Về trang chủ</a></section>`; return; }
     await render();
   } catch (error) { navigation(); showError(error); }

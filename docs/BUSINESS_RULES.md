@@ -47,7 +47,7 @@
 | BR43 | Seed-orders count nguyên 1–1000; thêm đơn luân phiên 5 trạng thái, dùng giá hiện tại và ngày mẫu cố định; trừ kho cho CONFIRMED/SHIPPING/COMPLETED. Thiếu kho rollback toàn bộ. |
 | BR44 | Ghi dữ liệu dùng giao dịch SQLite BEGIN IMMEDIATE trước đọc kiểm tra; WAL và busy_timeout=30000ms. Request xác nhận trùng không trừ kho nhiều lần. |
 | BR45 | Input JSON phải là object; trường body/query ngoài hợp đồng hoặc query lặp bị từ chối 400. Thông báo chỉ rõ trường vi phạm đầu tiên. |
-| BR46 | Không mã giảm giá, thanh toán online, CRUD danh mục hoặc tự đăng ký admin. Frontend hiện là placeholder. |
+| BR46 | Không mã giảm giá, thanh toán online, CRUD danh mục hoặc tự đăng ký admin. Frontend HTML/CSS/JavaScript thuần trong frontend/, không build step. |
 
 ## Trạng thái đơn
 

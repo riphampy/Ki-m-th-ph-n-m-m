@@ -1,6 +1,6 @@
-# PC Parts Shop — backend phục vụ kiểm thử
+# PC Parts Shop — website phục vụ kiểm thử
 
-Backend Flask + Flask-SQLAlchemy + SQLite, chạy bằng Waitress. Có 36 API nghiệp vụ, session/cookie, Swagger UI chạy từ tài nguyên cục bộ, seed cố định và trang frontend placeholder. Không dùng Docker, JWT hay CSRF token.
+Backend Flask + Flask-SQLAlchemy + SQLite, chạy bằng Waitress. Có 36 API nghiệp vụ, session/cookie, Swagger UI chạy từ tài nguyên cục bộ, seed cố định và frontend HTML/CSS/JavaScript thuần. Không dùng Docker, JWT hay CSRF token.
 
 ## Cài đặt và chạy trên Windows
 
@@ -22,7 +22,7 @@ Nếu PowerShell không cho kích hoạt venv, không cần thay đổi executio
 
 `-X utf8` tránh lỗi hiển thị của pip cũ khi đường dẫn Windows có dấu. Server nghe `127.0.0.1:5000`, 16 worker threads. Lần chạy đầu tự tạo `shop.db` và seed; các lần sau giữ nguyên dữ liệu. Dừng bằng Ctrl+C.
 
-- Trang placeholder: http://localhost:5000/
+- Cửa hàng: http://localhost:5000/
 - Swagger UI: http://localhost:5000/apidocs
 - Swagger JSON: http://localhost:5000/apispec_1.json
 - [Hợp đồng API cho frontend](docs/API.md)
@@ -117,7 +117,7 @@ Hoặc chỉ chạy smoke test ngắn theo đề bài:
 
 Test dùng DB tạm, không xóa `shop.db`. Bao phủ đăng ký → đăng nhập → giỏ → đặt đơn → xác nhận → trừ kho → hủy → hoàn kho, validation, phân quyền, báo cáo, reset, API prod, và 100 request HTTP qua Waitress. Test đồng thời xác nhận 2 đơn tranh 1 sản phẩm kiểm tra không bán quá kho.
 
-Selenium sẽ dùng khi frontend thực tế được bổ sung. Với JMeter, thêm HTTP Cookie Manager để mỗi virtual user có session, HTTP Header Manager `Content-Type: application/json`, login trước các API bảo vệ. Request ghi SQLite được tuần tự hóa; kết quả thử 100 request không phải cam kết throughput cho mọi kịch bản.
+Frontend đã sẵn sàng để sinh viên tự viết Selenium; xem `docs/UI_LOCATORS.md`. Với JMeter, thêm HTTP Cookie Manager để mỗi virtual user có session, HTTP Header Manager `Content-Type: application/json`, login trước các API bảo vệ. Request ghi SQLite được tuần tự hóa; kết quả thử 100 request không phải cam kết throughput cho mọi kịch bản.
 
 ## Cấu trúc
 
@@ -125,7 +125,7 @@ Selenium sẽ dùng khi frontend thực tế được bổ sung. Với JMeter, t
 app/                 Models, validators, auth, catalog, orders, inventory, reviews, reports
 app/seed.py          Seed/reset cố định
 app/api_docs.py      Hợp đồng Swagger và dữ liệu sinh tài liệu API
-frontend/index.html  Placeholder
+frontend/            14 trang HTML, CSS/JS dùng chung
 scripts/export_api.py Sinh lại docs/API.md và docs/openapi.json
 tests/              Smoke, nghiệp vụ, concurrency (DB tạm)
 docs/                API, BUSINESS_RULES, VERIFICATION
@@ -151,3 +151,35 @@ Không commit `.venv`, `shop.db`, `.env`, mật khẩu thật hoặc token.
 - Sản phẩm bị xóa sau khi đặt đơn: admin không thể xác nhận, nhưng có thể hủy PENDING; nếu đã xác nhận vẫn chuyển trạng thái/hoàn kho được.
 - Nếu admin đã nhập/điều chỉnh kho sát 9.999 làm hoàn kho vượt trần, hủy trả 409 và giữ nguyên toàn bộ; cần điều chỉnh kho trước khi hủy.
 - Giỏ chứa sản phẩm đã xóa vẫn hiển thị `is_active=false` để frontend cho phép xóa; không thể cập nhật số lượng hoặc đặt hàng dòng đó.
+
+## Giao diện frontend
+
+Không cần Node.js, npm hoặc build step để sử dụng. Flask phục vụ trực tiếp `frontend/`; chỉ chạy `python run.py` rồi mở http://localhost:5000/.
+
+| Đường dẫn | Chức năng | Quyền |
+|---|---|---|
+| /index.html (hoặc /) | Tìm/lọc/sắp xếp/phân trang sản phẩm | Công khai |
+| /product.html?id=4 | Chi tiết, thêm giỏ, xem/viết/sửa/xóa đánh giá | Công khai; thao tác tùy vai trò |
+| /login.html | Đăng nhập | Công khai |
+| /register.html | Đăng ký customer | Công khai |
+| /cart.html | Cập nhật giỏ, xóa dòng/toàn bộ | CUSTOMER |
+| /checkout.html | Thông tin người nhận, COD, đặt hàng | CUSTOMER |
+| /orders.html | Đơn hàng của tôi | CUSTOMER |
+| /order-detail.html?id=1 | Snapshot đơn, hủy hoặc chuyển trạng thái | Chủ đơn hoặc ADMIN |
+| /profile.html | Hồ sơ và đổi mật khẩu | Đăng nhập |
+| /admin/index.html | Doanh thu ngày/tháng, top 10, tồn kho thấp | ADMIN |
+| /admin/products.html | Thêm/sửa/xóa mềm sản phẩm | ADMIN |
+| /admin/inventory.html | Tạo phiếu nhập và xem lịch sử | ADMIN |
+| /admin/orders.html | Lọc đơn, xác nhận/giao/hoàn thành/hủy | ADMIN |
+| /admin/users.html | Khóa/mở khóa customer | ADMIN |
+
+- [Danh mục đầy đủ data-testid theo trang](docs/UI_LOCATORS.md).
+- [Định hướng giao diện](docs/FRONTEND_DESIGN.md).
+- API được gọi bằng fetch với credentials=same-origin. Không lưu cookie/token/mật khẩu trong localStorage. SessionStorage chỉ giữ thông báo qua chuyển trang.
+- Thông báo API và lỗi từng trường giữ nguyên message/errors từ server. Form dùng novalidate để không chặn kiểm thử biên bằng validation native.
+- Riêng nhập lại mật khẩu mới được so sánh ở frontend vì backend không có trường này.
+- Toast không tự ẩn; có nút Đóng. Xóa/hủy/khóa dùng dialog HTML; loading hiện trong suốt các request đang chờ.
+- Ngày giờ hiển thị theo giờ Việt Nam; khoảng báo cáo vẫn tính theo UTC. Dashboard mặc định từ 01/01 năm hiện tại đến hôm nay.
+- Minh họa linh kiện là SVG theo danh mục, không phải ảnh model thực; không tải ảnh/font ngoài.
+- Đã kiểm tra thủ công bằng trình duyệt các luồng chính; không viết sẵn Selenium theo yêu cầu.
+- Dữ liệu kiểm tra giao diện đã tạo tài khoản `frontend.qa.20261111@test.com`, đơn #11 (hủy), đơn #12 (hoàn thành), phiếu nhập #1 và sản phẩm #101 (đã xóa mềm). Có thể gọi API reset theo phần trên để trở về seed chuẩn trước bài test; không reset tự động sau khi kiểm tra để tránh xóa dữ liệu người dùng.
